@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CycloSense — Cyclone Intelligence Dashboard</title>
+  <meta name="description" content="AI-powered tropical cyclone detection, classification, and forecasting system for the North Indian Ocean. SIH 2026.">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- Dashboard styles -->
+  <link rel="stylesheet" href="../css/style.css">
+
+  <!-- Markdown parser for AI responses -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ══════════════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════════════ -->
+  <header class="header">
+    <div class="logo">
+      CycloSense
+    </div>
+    <span class="header-sub">Cyclone Intelligence Platform · SIH 2026</span>
+    <div class="spacer"></div>
+    <button class="btn-ai-header" id="open-ai-btn" onclick="openAiModal()">
+      Ask Cyclone AI
+    </button>
+    <div id="api-status" class="api-badge check">
+      <div class="dot"></div>
+      Connecting…
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════
+       LEFT SIDEBAR
+  ══════════════════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- Image upload -->
+    <div class="card" style="position:relative;">
+      <div class="card-title">Satellite Image</div>
+
+      <!-- Ocean Basin Selector -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">
+          Ocean Basin / Region
+        </div>
+        <select id="img-basin" style="width:100%;background:rgba(0,0,0,.45);border:1px solid var(--border);
+                border-radius:var(--radius-sm);color:var(--text-primary);font-size:11px;
+                padding:6px 8px;outline:none;cursor:pointer;font-family:inherit;">
+          <option value="bay_of_bengal" selected>Bay of Bengal (East Coast / Odisha / AP)</option>
+          <option value="arabian_sea">Arabian Sea (West Coast / Gujarat / Maha)</option>
+        </select>
+      </div>
+
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="img-input" accept="image/*">
+        <div class="u-icon" style="font-size:13px;font-weight:600;color:var(--accent-cyan);letter-spacing:1px;text-transform:uppercase;">[ Upload Image ]</div>
+        <div class="u-text">Drop image or click to upload</div>
+        <div class="u-sub">JPEG / PNG · 640 × 640 recommended</div>
+      </div>
+
+      <img id="img-preview" alt="Uploaded satellite image">
+
+      <!-- Detection loader -->
+      <div class="overlay-loader" id="det-loader">
+        <div class="spinner"></div>
+        <div class="spin-lbl">Running Detection…</div>
+      </div>
+    </div>
+
+    <!-- Detection result -->
+    <div class="card">
+      <div class="card-title">Detection — Model 1 (YOLO)</div>
+      <div id="det-result">
+        <div class="empty">
+          Upload a satellite image to detect cyclones
+        </div>
+      </div>
+    </div>
+
+    <!-- Classification result -->
+    <div class="card">
+      <div class="card-title">Classification — Model 2 (EfficientNet)</div>
+      <div id="cls-result">
+        <div class="empty">
+          Awaiting detection result
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ══════════════════════════════════════════════
+       MAP  (centre)
+  ══════════════════════════════════════════════ -->
+  <main class="map-wrap">
+    <div id="map"></div>
+    <div class="map-pill" id="map-pill">North Indian Ocean — CycloSense</div>
+
+    <!-- City Search & Proximity Bar -->
+    <div class="city-search-bar" id="city-search-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon" style="font-size:11px;color:var(--text-muted);font-weight:bold;">Find:</span>
+        <input type="text" id="city-search-input" placeholder="Check city proximity (e.g. Puri, Chennai, Mumbai...)" autocomplete="off">
+        <button class="btn-locate-me" id="btn-locate-me" title="Use current GPS location" onclick="locateUserGps()">GPS</button>
+      </div>
+      <!-- Suggestions dropdown -->
+      <div class="city-suggestions" id="city-suggestions" style="display:none;"></div>
+    </div>
+
+    <!-- Floating Proximity Warning Card -->
+    <div class="proximity-card" id="proximity-card" style="display:none;">
+      <div class="prox-header">
+        <div class="prox-title">
+          <span class="prox-dot" id="prox-dot"></span>
+          <span id="prox-city-name">Location Alert</span>
+        </div>
+        <button class="prox-close" onclick="closeProximityCard()" title="Close">&times;</button>
+      </div>
+      <div class="prox-body">
+        <div class="prox-dist-row">
+          <span class="prox-dist-val" id="prox-dist-val">-- km</span>
+          <span class="prox-hazard-badge" id="prox-hazard-badge">CALCULATING</span>
+        </div>
+        <div class="prox-meta" id="prox-meta">
+          Closest approach to projected cyclone path
+        </div>
+        <div class="prox-actions">
+          <button class="btn-prox-ai" onclick="askAiAboutCity()">Ask AI City Advisory</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ══════════════════════════════════════════════
+       RIGHT SIDEBAR
+  ══════════════════════════════════════════════ -->
+  <aside class="sidebar sidebar-right">
+
+    <!-- Track input -->
+    <div class="card">
+      <div class="card-title">Track History — 8 Points (3-hr intervals)</div>
+
+      <!-- Preset selector -->
+      <div style="margin-bottom:8px;">
+        <div style="font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;">
+          Load Real Cyclone (IBTrACS)
+        </div>
+        <select id="cyclone-preset" onchange="loadPreset(this.value)"
+          style="width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);
+                 border-radius:var(--radius-sm);color:var(--text-secondary);
+                 font-size:11px;padding:7px 9px;outline:none;cursor:pointer;
+                 font-family:inherit;transition:border-color .2s;">
+          <option value="">— Select a cyclone —</option>
+          <option value="fani">Cyclone Fani (2019) — VSCS, Odisha landfall</option>
+          <option value="amphan">Cyclone Amphan (2020) — VSCS, West Bengal landfall</option>
+          <option value="tauktae">Cyclone Tauktae (2021) — VSCS, Gujarat landfall</option>
+          <option value="biparjoy">Cyclone Biparjoy (2023) — VSCS, Gujarat landfall</option>
+          <option value="demo">Demo Track (synthetic)</option>
+        </select>
+      </div>
+
+      <div style="font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;">
+        Or paste custom JSON (8 points)
+      </div>
+      <textarea
+        class="track-ta"
+        id="track-input"
+        placeholder='[{"lat":10.2,"lon":80.1,"wind_speed":65}, ...]  ← 8 points, oldest first, 3-hr apart'
+      ></textarea>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="fcst-btn" onclick="runForecast()">
+          Run Forecast
+        </button>
+        <button class="btn btn-ghost" onclick="clearAll()">Clear Map</button>
+      </div>
+    </div>
+
+    <!-- Forecast table -->
+    <div class="card">
+      <div class="card-title">Track Forecast — Model 3 (LSTM)</div>
+      <div id="fcst-result">
+        <div class="empty">
+          Run forecast to see track predictions
+        </div>
+      </div>
+    </div>
+
+    <!-- Intensity chart -->
+    <div class="card">
+      <div class="card-title">Intensity Forecast</div>
+      <div id="intensity-chart"></div>
+      <div id="intensity-empty" class="empty">
+        Awaiting forecast
+      </div>
+    </div>
+
+    <!-- Risk summary -->
+    <div class="card">
+      <div class="card-title">Risk Summary</div>
+      <div id="risk-result">
+        <div class="empty">
+          No active forecast
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Action Planner Card -->
+    <div class="card ai-card-highlight">
+      <div class="card-title">
+        Ask Cyclone AI
+        <span class="ai-badge-pill">Groq LLaMA-3.3</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;line-height:1.4;">
+        Instant role-specific evacuation, marine, and emergency action plans grounded in live telemetry.
+      </div>
+      <button class="btn btn-ai-action" onclick="openAiModal()">
+        Open Decision Assistant
+      </button>
+    </div>
+
+  </aside>
+
+</div><!-- /.app -->
+
+<!-- ══════════════════════════════════════════════
+     ASK CYCLONE AI MODAL / DRAWER
+══════════════════════════════════════════════ -->
+<div class="ai-modal-overlay" id="ai-modal" onclick="if(event.target===this) closeAiModal()">
+  <div class="ai-modal">
+    <!-- Header -->
+    <div class="ai-modal-header">
+      <div>
+        <div class="ai-modal-title">
+          CycloSense AI Action Planner
+          <span class="ai-badge-pill">Groq LLaMA-3.3-70B</span>
+        </div>
+        <div class="ai-modal-sub">Decision-support and preparedness assistant grounded in live telemetry</div>
+      </div>
+      <div class="ai-modal-actions">
+        <button class="btn-icon-close" onclick="closeAiModal()" title="Close">&times;</button>
+      </div>
+    </div>
+
+    <!-- Telemetry Bar -->
+    <div class="ai-telemetry-bar" id="ai-telemetry-bar">
+      <div class="tele-chip">Category: <strong id="ai-tele-cat">Awaiting Data</strong></div>
+      <div class="tele-chip">Pos: <strong id="ai-tele-pos">—</strong></div>
+      <div class="tele-chip">Wind: <strong id="ai-tele-wind">—</strong></div>
+      <div class="tele-chip">Risk: <strong id="ai-tele-risk">—</strong></div>
+    </div>
+
+    <!-- Role Selector -->
+    <div class="ai-role-section">
+      <div class="ai-role-lbl">Select Your Perspective / Role:</div>
+      <div class="ai-role-pills" id="ai-role-pills">
+        <button class="role-pill active" data-role="resident" onclick="selectAiRole('resident')">Coastal Resident</button>
+        <button class="role-pill" data-role="fisherman" onclick="selectAiRole('fisherman')">Fisherman / Marine</button>
+        <button class="role-pill" data-role="port_operator" onclick="selectAiRole('port_operator')">Port Authority</button>
+        <button class="role-pill" data-role="disaster_official" onclick="selectAiRole('disaster_official')">Disaster Official</button>
+        <button class="role-pill" data-role="general" onclick="selectAiRole('general')">General Public</button>
+      </div>
+    </div>
+
+    <!-- Quick Action Prompt Chips -->
+    <div class="ai-quick-chips">
+      <button class="quick-chip" onclick="askQuickPrompt('Generate an immediate step-by-step emergency action plan for my role.')">Action Plan</button>
+      <button class="quick-chip" onclick="askQuickPrompt('What is the projected landfall window and expected wind impact timeline?')">Landfall Timeline</button>
+      <button class="quick-chip" onclick="askQuickPrompt('What are the specific evacuation, shelter, and marine safety protocols?')">Evacuation & Safety</button>
+      <button class="quick-chip" onclick="askQuickPrompt('What infrastructure and power supply precautions should be prioritized?')">Infrastructure Precautions</button>
+    </div>
+
+    <!-- Chat Body -->
+    <div class="ai-chat-body" id="ai-chat-body">
+      <!-- Welcome bubble -->
+      <div class="ai-bubble assistant">
+        <p><strong>Welcome to CycloSense Decision Assistant</strong></p>
+        <p>I am powered by <strong>Groq LLaMA-3.3</strong> and grounded in your live cyclone detection, EfficientNet category classification, and LSTM trajectory forecast. Select your role above or ask any question to generate an actionable preparedness plan.</p>
+      </div>
+    </div>
+
+    <!-- Input Bar -->
+    <form class="ai-input-bar" onsubmit="event.preventDefault(); submitAiMessage();">
+      <div class="ai-input-wrap">
+        <input type="text" id="ai-user-input" class="ai-input" placeholder="Ask about safety actions, wind timeline, landfall..." autocomplete="off">
+      </div>
+      <button type="submit" class="btn-ai-send" id="btn-ai-send">
+        Ask AI
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Plotly (lightweight bundle) -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<!-- Dashboard logic -->
+<script src="../js/main.js"></script>
+
+</body>
+</html>

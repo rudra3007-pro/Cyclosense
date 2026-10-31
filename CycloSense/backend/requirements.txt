@@ -1,0 +1,11 @@
+flask
+flask-cors
+torch
+torchvision
+ultralytics
+scikit-learn
+pandas
+numpy
+pillow
+groq
+requests

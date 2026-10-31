@@ -1,0 +1,125 @@
+# ─────────────────────────────────────────────
+# CycloSense .gitignore
+# ─────────────────────────────────────────────
+
+# ── Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+*.so
+
+# ── Virtual Environments ──────────────────────
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# ── Flask ─────────────────────────────────────
+instance/
+.webassets-cache
+flask_session/
+
+# ── ML / PyTorch / Model Artifacts ───────────
+# Keep weights/ tracked (already trained models)
+# but ignore experiment checkpoints & caches
+*.ckpt
+*.pth
+runs/
+mlruns/
+mlflow/
+wandb/
+lightning_logs/
+.cache/
+ultralytics/
+
+# ── Jupyter Notebooks ─────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── Data (large files — use DVC or Git LFS) ──
+ml/data/raw/*
+ml/data/processed/*
+!ml/data/raw/.gitkeep
+!ml/data/processed/.gitkeep
+
+# ── Outputs ───────────────────────────────────
+outputs/logs/*
+outputs/predictions/*
+!outputs/logs/.gitkeep
+!outputs/predictions/.gitkeep
+reports/figures/*
+!reports/figures/.gitkeep
+
+# ── Uploads (user-submitted images) ──────────
+backend/app/static/uploads/*
+!backend/app/static/uploads/.gitkeep
+
+# ── Environment Variables ─────────────────────
+.env
+.env.*
+!.env.example
+*.env
+
+# ── IDE & Editor ──────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ── Logs ──────────────────────────────────────
+*.log
+logs/
+
+# ── Testing ───────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Node (Frontend) ───────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+frontend/dist/
+frontend/build/
+
+# ── Docker ────────────────────────────────────
+.docker/
+
+# ── Misc ──────────────────────────────────────
+*.bak
+*.tmp
+*.temp
